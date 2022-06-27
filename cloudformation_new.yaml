@@ -1,16 +1,16 @@
 ---
 Description: Sets up all the resources to build a Dynamo DB table replicated via streams
-  to an Amazon Elasticsearch Service domain. ***Note*** This template deploys resources
+  to an Amazon Opensearch Service domain. ***Note*** This template deploys resources
   that will result in charges to your AWS account
 Parameters:
   StackPrefix:
     Type: String
     Default: imdbddbes
     Description: Enter a short string to use as a prefix for all resources
-  ElasticsearchMoviesIndexName:
+  OpensearchMoviesIndexName:
     Type: String
     Default: movies
-    Description: Enter a name for the movies index in Elasticsearch
+    Description: Enter a name for the movies index in Opensearch
 Mappings:
   S3Buckets:
     us-east-1:
@@ -88,7 +88,7 @@ Resources:
             - cognito-identity:*
             Resource:
             - "*"
-  ElasticsearchDomain:
+  OpensearchDomain:
     Type: AWS::OpenSearchService::Domain
     Properties:
       DomainName:
@@ -229,7 +229,7 @@ Resources:
     Type: AWS::Lambda::Function
     DependsOn:
     - LambdaExecutionRole
-    - ElasticsearchDomain
+    - OpensearchDomain
     - DDBTable
     Properties:
       Handler: lambda_function.handler
@@ -254,10 +254,10 @@ Resources:
         Variables:
           AES_ENDPOINT:
             Fn::GetAtt:
-            - ElasticsearchDomain
+            - OpensearchDomain
             - DomainEndpoint
           MOVIES_INDEX_NAME:
-            Ref: ElasticsearchMoviesIndexName
+            Ref: OpensearchMoviesIndexName
           REGION:
             Ref: AWS::Region
   WiringFunction:
@@ -266,7 +266,7 @@ Resources:
     - LambdaExecutionRole
     - DDBTable
     - FunctionSourceMapping
-    - ElasticsearchDomain
+    - OpensearchDomain
     - CognitoUserPool
     - CognitoIdentityPool
     Properties:
@@ -281,7 +281,7 @@ Resources:
         Variables:
           AES_ENDPOINT:
             Fn::GetAtt:
-            - ElasticsearchDomain
+            - OpensearchDomain
             - DomainEndpoint
           S3_BUCKET:
             Fn::FindInMap:
@@ -301,7 +301,7 @@ Resources:
           REGION:
             Ref: AWS::Region
           MOVIES_INDEX_NAME:
-            Ref: ElasticsearchMoviesIndexName
+            Ref: OpensearchMoviesIndexName
           STACK_PREFIX:
             Ref: StackPrefix
           USER_POOL_ID:

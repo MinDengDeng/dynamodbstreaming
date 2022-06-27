@@ -14,7 +14,8 @@ Parameters:
 Mappings:
   S3Buckets:
     us-east-1:
-      Bucket: imdb-ddb-aes-lab-east-1
+      #Bucket: imdb-ddb-aes-lab-east-1
+      Bucket: yanmin-test-imdb-ddb-aes-lab-east-1
     us-east-2:
       Bucket: imdb-ddb-aes-lab-east-2
     us-west-2:
@@ -88,21 +89,21 @@ Resources:
             Resource:
             - "*"
   ElasticsearchDomain:
-    Type: AWS::Elasticsearch::Domain
+    Type: AWS::OpenSearchService::Domain
     Properties:
       DomainName:
         Fn::Join:
         - ''
         - - Ref: StackPrefix
           - "-domain"
-      ElasticsearchVersion: '6.2'
-      ElasticsearchClusterConfig:
-        DedicatedMasterEnabled: 'false'
-        ZoneAwarenessEnabled: 'false'
+      EngineVersion: 'OpenSearch_1.0'
+      ClusterConfig:
+        DedicatedMasterEnabled: false
+        ZoneAwarenessEnabled: false
         InstanceCount: '1'
-        InstanceType: t2.small.elasticsearch
+        InstanceType: m3.medium.search
       EBSOptions:
-        EBSEnabled: 'true'
+        EBSEnabled: true
         VolumeSize: 10
         VolumeType: gp2
       AccessPolicies:
@@ -236,7 +237,7 @@ Resources:
         Fn::GetAtt:
         - LambdaExecutionRole
         - Arn
-      Runtime: python3.9
+      Runtime: python3.7
       Timeout: '60'
       Code:
         S3Bucket:
@@ -274,7 +275,7 @@ Resources:
         Fn::GetAtt:
         - LambdaExecutionRole
         - Arn
-      Runtime: python3.9
+      Runtime: python3.7
       Timeout: 300
       Environment:
         Variables:
@@ -316,16 +317,16 @@ Resources:
           - Constants
           - S3Keys
           - WiringLambdaFunctionCode
-  WiringFunctionInvocation:
-    Type: Custom::WiringFunctionInvocation
-    DependsOn: WiringFunction
-    Properties:
-      ServiceToken:
-        Fn::GetAtt:
-        - WiringFunction
-        - Arn
-      Region:
-        Ref: AWS::Region
+  #WiringFunctionInvocation:
+  #  Type: Custom::WiringFunctionInvocation
+  #  DependsOn: WiringFunction
+  #  Properties:
+  #    ServiceToken:
+  #      Fn::GetAtt:
+  #      - WiringFunction
+  #      - Arn
+  #    Region:
+  #      Ref: AWS::Region
   StreamingFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -334,7 +335,7 @@ Resources:
         Fn::GetAtt:
         - LambdaExecutionRole
         - Arn
-      Runtime: python3.9
+      Runtime: python3.7
       Timeout: 300
       Environment:
         Variables:

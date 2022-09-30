@@ -5,8 +5,7 @@ MAPPING = '''{
         "number_of_replicas": 0
     },
     "mappings": {
-        "movie": {
-            "properties": {
+        "properties": {
                 "id": {
                     "type": "keyword"
                 },
@@ -73,7 +72,6 @@ MAPPING = '''{
                     "type": "long"
                 }
             }
-        }
     }
 }'''
 # This set of ids is the full set for 2013Imdb.txt. The lab is using a subset for shorter load time

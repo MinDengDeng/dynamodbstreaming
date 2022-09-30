@@ -25,9 +25,9 @@ Mappings:
   Constants:
     S3Keys:
       MovieSourceData: ImdbTrimmed.txt
-      StreamLambdaFunctionCode: lambda_function.zip
+      DDBStreamingLambdaFunctionCode: lambda_ddb_streaming_function.zip
       WiringLambdaFunctionCode: lambda_wiring_function.zip
-      StreamingLambdaFunctionCode: lambda_streaming_function.zip
+      DDBUpdateLambdaFunctionCode: lambda_ddb_update_function.zip
 Resources:
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
@@ -96,7 +96,7 @@ Resources:
         - ''
         - - Ref: StackPrefix
           - "-domain"
-      EngineVersion: 'OpenSearch_1.0'
+      EngineVersion: 'OpenSearch_1.3'
       ClusterConfig:
         DedicatedMasterEnabled: false
         ZoneAwarenessEnabled: false
@@ -212,7 +212,7 @@ Resources:
         StreamViewType: NEW_AND_OLD_IMAGES
   FunctionSourceMapping:
     Type: AWS::Lambda::EventSourceMapping
-    DependsOn: LambdaFunctionForDDBStreams
+    DependsOn: DDBStreamingLambdaFunction
     Properties:
       BatchSize: 100
       Enabled: 'true'
@@ -222,10 +222,10 @@ Resources:
         - StreamArn
       FunctionName:
         Fn::GetAtt:
-        - LambdaFunctionForDDBStreams
+        - DDBStreamingLambdaFunction
         - Arn
       StartingPosition: TRIM_HORIZON
-  LambdaFunctionForDDBStreams:
+  DDBStreamingLambdaFunction:
     Type: AWS::Lambda::Function
     DependsOn:
     - LambdaExecutionRole
@@ -237,7 +237,7 @@ Resources:
         Fn::GetAtt:
         - LambdaExecutionRole
         - Arn
-      Runtime: python3.7
+      Runtime: python3.9
       Timeout: '60'
       Code:
         S3Bucket:
@@ -249,7 +249,7 @@ Resources:
           Fn::FindInMap:
           - Constants
           - S3Keys
-          - StreamLambdaFunctionCode
+          - DDBStreamingLambdaFunctionCode
       Environment:
         Variables:
           AES_ENDPOINT:
@@ -275,7 +275,7 @@ Resources:
         Fn::GetAtt:
         - LambdaExecutionRole
         - Arn
-      Runtime: python3.7
+      Runtime: python3.9
       Timeout: 300
       Environment:
         Variables:
@@ -317,17 +317,17 @@ Resources:
           - Constants
           - S3Keys
           - WiringLambdaFunctionCode
-  #WiringFunctionInvocation:
-  #  Type: Custom::WiringFunctionInvocation
-  #  DependsOn: WiringFunction
-  #  Properties:
-  #    ServiceToken:
-  #      Fn::GetAtt:
-  #      - WiringFunction
-  #      - Arn
-  #    Region:
-  #      Ref: AWS::Region
-  StreamingFunction:
+  WiringFunctionInvocation:
+    Type: Custom::WiringFunctionInvocation
+    DependsOn: WiringFunction
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+        - WiringFunction
+        - Arn
+      Region:
+        Ref: AWS::Region
+  DDBUpdateFunction:
     Type: AWS::Lambda::Function
     Properties:
       Handler: lambda_streaming_function.handler
@@ -335,7 +335,7 @@ Resources:
         Fn::GetAtt:
         - LambdaExecutionRole
         - Arn
-      Runtime: python3.7
+      Runtime: python3.9
       Timeout: 300
       Environment:
         Variables:
@@ -356,4 +356,4 @@ Resources:
           Fn::FindInMap:
           - Constants
           - S3Keys
-          - StreamingLambdaFunctionCode
+          - DDBUpdateLambdaFunctionCode

@@ -15,6 +15,7 @@
 '''
 
 from __future__ import print_function
+from signed_request import send_signed
 
 import json
 import os
@@ -24,8 +25,7 @@ import uuid
 import boto3
 import constants
 import requests
-#import cfnresponse
-from signed_request import send_signed
+import cfnresponse
 
 FIELD_TYPES = {
     'id': 'S',
@@ -59,15 +59,15 @@ def handler(event, context):
             create_cognito_domain()
             create_cognito_user()
         except Exception as e:
-            #cfnresponse.send(event, context, cfnresponse.FAILED,responseData, physicalResourceId)
+            cfnresponse.send(event, context, cfnresponse.FAILED,responseData, physicalResourceId)
             return False
     if event['RequestType'] == 'Delete':
         try:
             delete_cognito_domain()
         except Exception as e:
-            #cfnresponse.send(event, context, cfnresponse.FAILED,responseData, physicalResourceId)
+            cfnresponse.send(event, context, cfnresponse.FAILED,responseData, physicalResourceId)
             return False 
-    #cfnresponse.send(event, context, cfnresponse.SUCCESS,responseData, physicalResourceId)
+    cfnresponse.send(event, context, cfnresponse.SUCCESS,responseData, physicalResourceId)
     return True
 
 def send_mapping():

@@ -106,7 +106,7 @@ def send_data_to_ddb():
                     continue
                 rec = make_record_valid_with_random_data(rec)
             fields = inject_price_clicks_and_purchases(rec['fields'])
-            fields = inject_location(rec['fields'])
+            #fields = inject_location(rec['fields'])
             put_item(rec['id'],
                      rec['fields']['year'],
                      **inject_types(fields))
@@ -271,6 +271,28 @@ def put_item(item_id, item_year, **kwargs):
         'id': {'S': item_id},
         'year': {'N': item_year}
     }
+    #    items_dict = {
+#        'id': {'S': item_id},
+#        'year': {'N': '2099'},
+#        'plot': {'S': 'Katniss Everdeen and Peeta Mellark become targets of the Capitol after their victory in the 74th Hunger Games sparks a rebellion in the Districts of Panem.'}, 
+#        'genres': {'SS': ['Action', 'Adventure', 'Sci-Fi', 'Thriller']}, 
+#        'title': {'S': 'The Hunger Games: Catching Fire'}, 
+#        #'release_date': {'S': '2013-11-11T00:00:00Z'}, 
+#        'rank': {'N': '4'}, 
+#        'running_time_secs': {'N': '8760'}, 
+#        'directors': {'SS': ['Francis Lawrence']}, 
+#        'image_url': {'S': 'http://ia.media-imdb.com/images/M/MV5BMTAyMjQ3OTAxMzNeQTJeQWpwZ15BbWU4MDU0NzA1MzAx._V1_SX400_.jpg'}, 
+#        #'year': {'N': '2013'}, 
+#        'actors': {'SS': ['Jennifer Lawrence', 'Josh Hutcherson', 'Liam Hemsworth']}, 
+#        'rating': {'N': '7.6'}, 
+#        'price': {'N': '29.99'}, 
+#        'clicks': {'N': '4950953'}, 
+#        'purchases': {'N': '15628'}, 
+#        #'location': {'S': '31.46, -106.29'}
+#    }
+
+    print(kwargs)
+
     items_dict.update(**kwargs)
     boto3.client('dynamodb').put_item(TableName=table_name, Item=items_dict)
 

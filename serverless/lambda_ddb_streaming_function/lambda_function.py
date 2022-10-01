@@ -9,7 +9,7 @@ import constants
 from signed_request import send_signed
 
 def handler(event, context):
-    movie_buffer = EsBuffer(os.environ['MOVIES_INDEX_NAME'], 'movie', use_timestamp=False)
+    movie_buffer = EsBuffer(os.environ['MOVIES_INDEX_NAME'], '_doc', use_timestamp=False)
     update_buffer = EsBuffer('logs', 'log', use_timestamp=True)
     # print(event['Records'])
     for record in event['Records']:

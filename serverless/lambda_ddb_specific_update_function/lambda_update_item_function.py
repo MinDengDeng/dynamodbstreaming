@@ -14,7 +14,7 @@ import boto3
 
 ddb_client = boto3.client('dynamodb')
 
-def lambda_handler(event, context):
+def handler(event, context):
     print('Event: {}'.format(event))
     print('context: {}'.format(context))
     #item_id = context["movie_id"]

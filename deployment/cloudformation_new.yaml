@@ -18,6 +18,7 @@ Mappings:
       DDBStreamingLambdaFunctionCode: lambda_ddb_streaming_function.zip
       WiringLambdaFunctionCode: lambda_wiring_function.zip
       DDBUpdateLambdaFunctionCode: lambda_ddb_update_function.zip
+      DDBUpdateItemLambdaFunctionCode: lambda_ddb_update_item_function.zip
 Resources:
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
@@ -355,3 +356,36 @@ Resources:
           - Constants
           - S3Keys
           - DDBUpdateLambdaFunctionCode
+  DDBUpdateItemFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: lambda_update_item_function.handler
+      Role:
+        Fn::GetAtt:
+        - LambdaExecutionRole
+        - Arn
+      Runtime: python3.9
+      Timeout: 300
+      Environment:
+        Variables:
+          DDB_TABLE_NAME:
+            Fn::Join:
+            - ''
+            - - Ref: StackPrefix
+              - "-table"
+          REGION:
+            Ref: AWS::Region
+      Code:
+        S3Bucket:
+          Fn::Join:
+          - ''
+          - - 'imdb-ddb-os-lab-'
+            - Ref: AWS::Region
+            - "-"
+            - Ref: AWS::AccountId
+        S3Key:
+          Fn::FindInMap:
+          - Constants
+          - S3Keys
+          - DDBUpdateItemLambdaFunctionCode
+  # API gateway

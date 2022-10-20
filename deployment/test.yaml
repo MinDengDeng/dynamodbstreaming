@@ -1,0 +1,217 @@
+---
+Description: Sets up all the resources to build a Dynamo DB table replicated via streams
+  to an Amazon Opensearch Service domain. ***Note*** This template deploys resources
+  that will result in charges to your AWS account
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "test-delete-later-lambda_role"
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: "test-delete-later-lambda-execution"
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: arn:aws:lambda:*:*:function:*
+          - Effect: Allow
+            Action:
+            - s3:ListBucket
+            - s3:GetObject
+            Resource: "arn:aws:s3:::imdb-ddb-os-lab-us-east-1-842453023531/*"
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*:*
+          - Effect: Allow
+            Action:
+            - dynamodb:*
+            Resource: arn:aws:dynamodb:*:*:table/*
+          - Effect: Allow
+            Action:
+            - cognito-idp:*
+            Resource: arn:aws:cognito-idp:*:*:userpool/*
+          - Effect: Allow
+            Action:
+            - es:*
+            Resource:
+            - "*"
+
+  DDBUpdateItemFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+        - LambdaExecutionRole
+        - Arn
+      Runtime: python3.9
+      Timeout: 300
+      Environment:
+        Variables:
+          DDB_TABLE_NAME: yanmin-ddb-table
+          REGION:
+            Ref: AWS::Region
+      Code:
+        ZipFile: |
+          from __future__ import print_function
+          import random
+          import time
+          import os
+
+          import boto3
+
+          ddb_client = boto3.client('dynamodb')
+
+          def handler(event, context):
+              print('Event: {}'.format(event))
+              print('context: {}'.format(context))
+              #item_id = context["movie_id"]
+              item_id = 'tt0379786'
+              print('Updating {} in DDB'.format(item_id))
+              item = get_id_as_dict(item_id)
+              print('item 1: {}'.format(item))
+              # add some clicks and purchases
+              #inverted_rank = 5001 - item['rank']
+              #num = random.randint(0, inverted_rank // 250) + 1
+              #add_int_value_to_item(item_id, 'clicks', '1234')
+              add_int_value_to_item(item_id, 'purchases', '5678')
+              item = get_id_as_dict(item_id)
+              print('item 2: {}'.format(item))
+              msg = 'Updated {} with clicks - {}, and purchases - {}'
+              print(msg.format(item_id, 88888888, 99999999))
+
+          def item_to_dict(item):
+              resp = {}
+              if type(item) is str:
+                  return item
+              for key, struct in item.items():
+                  if type(struct) is str:
+                      if key == 'I':
+                          return int(struct)
+                      else:
+                          return struct
+                  else:
+                      for k, v in struct.items():
+                          if k == 'S':
+                              value = str(v.encode('utf-8'))
+                          elif k == 'N':
+                              if '.' in v:
+                                  value = float(v)
+                              else:
+                                  value = int(v)
+                          elif k == 'SS':
+                              value = [li for li in v]
+                          else:
+                              key = k
+                              value = item_to_dict(v)
+                          resp[key] = value
+              return resp
+
+          def get_id_as_dict(movie_id):
+              item = ddb_client.get_item(
+                  TableName=os.environ['DDB_TABLE_NAME'],
+                  Key={'id': {'S': movie_id}}
+              )
+              item = item.get('Item', None)
+              if item:
+                  return item_to_dict(item)
+              return None
+
+          def add_int_value_to_item(item_id, attr_name, val):
+              print('SET #{} = #{} + :incr'.format(attr_name, attr_name))
+              ExpressionAttributeNames={'#{}'.format(attr_name): attr_name}
+              print('ExpressionAttributeNames: {}'.format(ExpressionAttributeNames))
+              ExpressionAttributeValues={':incr' : {'N' : str(val)}}
+              print('ExpressionAttributeValues: {}'.format(ExpressionAttributeValues))
+              
+              ddb_client.update_item(
+                  TableName=os.environ['DDB_TABLE_NAME'],
+                  Key={'id': {'S': item_id}},
+                  UpdateExpression='SET #{} = #{} + :incr'.format('rating', 'rating'),
+                  ExpressionAttributeNames={'#rating': 'rating'},
+                  ExpressionAttributeValues={':incr': {'N': '1'}},
+              )  
+
+  # API gateway
+  ApiGatewayIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: 'Allow'
+            Principal:
+              Service:
+                - 'apigateway.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+        - PolicyName: LambdaAccess-test-delete-later
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action: 'lambda:*'
+                Resource: !GetAtt DDBUpdateItemFunction.Arn
+
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Description: test
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Name: 'ddbstreamsosapi-test-delete'
+
+  ApiGatewayRootMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        IntegrationHttpMethod: POST
+        Credentials: !GetAtt ApiGatewayIamRole.Arn
+        Type: AWS
+        IntegrationResponses:
+          - StatusCode: '200'
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+          - lambdaArn: !GetAtt DDBUpdateItemFunction.Arn
+      ResourceId: !GetAtt ApiGateway.RootResourceId
+      RestApiId: !Ref ApiGateway
+      MethodResponses:
+        - StatusCode: '200'
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ApiGatewayRootMethod
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: updates
+
+  lambdaApiGatewayInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DDBUpdateItemFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/POST/
+
+
+

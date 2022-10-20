@@ -146,6 +146,22 @@ def create_cognito_user():
     except Exception as e:
         print('Exception creating Cognito user.\nMessage: {}'.format(e.message))
 
+def turn_on_cognito_for_os():
+    print('Turn on cognito for opensearch')
+    try:
+        client = boto3.client('opensearch')
+        response = client.update_domain_config(
+            DomainName=os.environ['AES_ENDPOINT'],
+            CognitoOptions={
+                'Enabled': True,
+                'UserPoolId': os.environ['USER_POOL_ID'],
+                'IdentityPoolId': os.environ['CognitoIdentityPool'],
+                'RoleArn': 'CognitoAccessForAmazonOpenSearch'
+            }
+        )
+    except Exception as e:
+        print("Exception enabling cognito authentication.\nMessage: {}".format(e))
+
 def delete_cognito_domain():
     try:
         print('Deleting cognito domain')

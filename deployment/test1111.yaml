@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: AWS API Gateway with a Lambda Integration
+
+Resources:
+
+  ApiGatewayRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      ApiKeySourceType: HEADER
+      Description: An API Gateway with a Lambda Integration
+      EndpointConfiguration:
+        Types:
+          - EDGE
+      Name: lambda-api
+
+  ApiGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: 'lambda'
+      RestApiId: !Ref ApiGatewayRestApi
+
+  ApiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      ApiKeyRequired: false
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        ConnectionType: INTERNET
+        Credentials: !GetAtt ApiGatewayIamRole.Arn
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        TimeoutInMillis: 29000
+        Type: AWS_PROXY
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DDBUpdateItemFunction.Arn}/invocations'
+      OperationName: 'lambda'
+      ResourceId: !Ref ApiGatewayResource
+      RestApiId: !Ref ApiGatewayRestApi
+
+  ApiGatewayModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      ContentType: 'application/json'
+      RestApiId: !Ref ApiGatewayRestApi
+      Schema: {}
+
+  ApiGatewayStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId: !Ref ApiGatewayDeployment
+      Description: Lambda API Stage v0
+      RestApiId: !Ref ApiGatewayRestApi
+      StageName: 'v0'
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: ApiGatewayMethod
+    Properties:
+      Description: Lambda API Deployment
+      RestApiId: !Ref ApiGatewayRestApi
+
+  ApiGatewayIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: 'Allow'
+            Principal:
+              Service:
+                - 'apigateway.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+        - PolicyName: LambdaAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action: 'lambda:*'
+                Resource: !GetAtt DDBUpdateItemFunction.Arn
+
+  DDBUpdateItemFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: imdb-ddb-os-lab-us-east-1-842453023531
+        S3Key: lambda_ddb_update_item_function.zip         
+      Description: AWS Lambda function
+      FunctionName: 'lambda-function'
+      Handler: index.handler
+      MemorySize: 256
+      Role: !GetAtt LambdaIamRole.Arn
+      Runtime: python3.7
+      Timeout: 300
+      Environment:
+        Variables:
+          DDB_TABLE_NAME: yanmin-ddb-table
+          REGION:
+            Ref: AWS::Region
+
+  LambdaIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "test-delete-later-lambda_role"
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: "test-delete-later--lambda-execution"
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: arn:aws:lambda:*:*:function:*
+          - Effect: Allow
+            Action:
+            - s3:ListBucket
+            - s3:GetObject
+            Resource: "arn:aws:s3:::imdb-ddb-os-lab-us-east-1-842453023531/*"
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*:*
+          - Effect: Allow
+            Action:
+            - dynamodb:*
+            Resource: arn:aws:dynamodb:*:*:table/*
+          - Effect: Allow
+            Action:
+            - cognito-idp:*
+            Resource: arn:aws:cognito-idp:*:*:userpool/*
+          - Effect: Allow
+            Action:
+            - es:*
+            Resource:
+            - "*"

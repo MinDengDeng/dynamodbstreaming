@@ -17,20 +17,17 @@ ddb_client = boto3.client('dynamodb')
 def handler(event, context):
     print('Event: {}'.format(event))
     print('context: {}'.format(context))
-    #item_id = context["movie_id"]
-    item_id = 'tt0379786'
+    item_id = event["movieid"]
+    purchases_count = event["purchases"]
+    #item_id = 'tt0379786'
     print('Updating {} in DDB'.format(item_id))
-    item = get_id_as_dict(item_id)
-    print('item 1: {}'.format(item))
-    # add some clicks and purchases
-    #inverted_rank = 5001 - item['rank']
-    #num = random.randint(0, inverted_rank // 250) + 1
-    #add_int_value_to_item(item_id, 'clicks', '1234')
-    add_int_value_to_item(item_id, 'purchases', '5678')
-    item = get_id_as_dict(item_id)
-    print('item 2: {}'.format(item))
-    msg = 'Updated {} with clicks - {}, and purchases - {}'
-    print(msg.format(item_id, 88888888, 99999999))
+    item1 = get_id_as_dict(item_id)
+    print('item 1: {}'.format(item1))
+    add_int_value_to_item(item_id, 'purchases', purchases_count)
+    item2 = get_id_as_dict(item_id)
+    print('item 2: {}'.format(item2))
+    msg = 'Updated {} purchases from {} - {}'
+    print(msg.format(item_id, item1['purchases'], item2['purchases']))
 
 def item_to_dict(item):
     resp = {}
@@ -76,18 +73,11 @@ def add_int_value_to_item(item_id, attr_name, val):
     ExpressionAttributeValues={':incr' : {'N' : str(val)}}
     print('ExpressionAttributeValues: {}'.format(ExpressionAttributeValues))
     
-    #ddb_client.update_item(
-    #    TableName=os.environ['DDB_TABLE_NAME'],
-    #    Key={'id': {'S': item_id}},
-    #    UpdateExpression='SET #{} = #{} + :incr'.format(attr_name, attr_name),
-    #    ExpressionAttributeNames={'#{}'.format(attr_name): attr_name},
-    #    ExpressionAttributeValues={':incr' : {'N' : str(val)}},
-    #)
     ddb_client.update_item(
         TableName=os.environ['DDB_TABLE_NAME'],
         Key={'id': {'S': item_id}},
-        UpdateExpression='SET #{} = #{} + :incr'.format('rating', 'rating'),
-        ExpressionAttributeNames={'#rating': 'rating'},
-        ExpressionAttributeValues={':incr': {'N': '1'}},
+        UpdateExpression='SET #{} = #{} + :incr'.format(attr_name, attr_name),
+        ExpressionAttributeNames={'#{}'.format(attr_name): attr_name},
+        ExpressionAttributeValues={':incr' : {'N' : str(val)}},
     )
 

@@ -23,13 +23,47 @@ Resources:
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: ImdbDdbEsUserPool
+      UserPoolName: 
+        Fn::Join:
+        - ''
+        - - Ref: StackPrefix
+          - 'ImdbDdbEsUserPool'
   CognitoIdentityPool:
     Type: AWS::Cognito::IdentityPool
     Properties:
-      IdentityPoolName: ImdbDdbEsIdentityPool
+      IdentityPoolName: 
+        Fn::Join:
+        - ''
+        - - Ref: StackPrefix
+          - 'ImdbDdbEsIdentityPool'
       AllowUnauthenticatedIdentities: 'true'
       DeveloperProviderName: ImdbDdbEsDomain
+  CognitoAccessForAmazonOpenSearchRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Join:
+        - ''
+        - - Ref: StackPrefix
+          - "-CognitoAccessForAmazonOpenSearch"
+      Path: "/"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: es.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/AmazonOpenSearchServiceCognitoAccess]
+  UserPoolDomain: 
+    Type: AWS::Cognito::UserPoolDomain 
+    Properties:
+      UserPoolId: !Ref CognitoUserPool 
+      Domain:     
+        Fn::Join:
+        - ''
+        - - Ref: StackPrefix
+          - "my-ddb-streams-os-domain"
   IdentityPoolRoleAttachment:
     DependsOn: AuthUserRole
     Type: AWS::Cognito::IdentityPoolRoleAttachment
@@ -97,6 +131,14 @@ Resources:
         EBSEnabled: true
         VolumeSize: 10
         VolumeType: gp2
+      CognitoOptions:
+        Enabled: 'true'
+        UserPoolId: !Ref CognitoUserPool
+        IdentityPoolId: !Ref CognitoIdentityPool
+        RoleArn: 
+          Fn::GetAtt:
+          - CognitoAccessForAmazonOpenSearchRole
+          - Arn
       AccessPolicies:
         Version: '2012-10-17'
         Statement:

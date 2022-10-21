@@ -56,7 +56,7 @@ def handler(event, context):
         try:
             send_mapping()
             send_data_to_ddb()
-            create_cognito_domain()
+            #create_cognito_domain()
             create_cognito_user()
         except Exception as e:
             cfnresponse.send(event, context, cfnresponse.FAILED,responseData, physicalResourceId)
@@ -117,21 +117,21 @@ def send_data_to_ddb():
         print("Wiring function failed, execption message {}".format(e.message))
         raise
 
-def create_cognito_domain():
-    print('Creating Cognito domain')
-    cognito_idp = boto3.client('cognito-idp')
-    domain_name = '{}-{}'.format(os.environ['STACK_PREFIX'], str(uuid.uuid1())[:8])
-    print('Creating domain: {}'.format(domain_name))
-    try:
-        response = cognito_idp.create_user_pool_domain(
-            Domain=domain_name,
-            UserPoolId=os.environ['USER_POOL_ID']
-        )
-        print('Created Cognito domain')
-        return domain_name
-    except Exception as e:
-        print('Exception creating Cognito domain.\nMessage: {}'.format(e.message))
-        return None
+#def create_cognito_domain():
+#    print('Creating Cognito domain')
+#    cognito_idp = boto3.client('cognito-idp')
+#    domain_name = '{}-{}'.format(os.environ['STACK_PREFIX'], str(uuid.uuid1())[:8])
+#    print('Creating domain: {}'.format(domain_name))
+#    try:
+#        response = cognito_idp.create_user_pool_domain(
+#            Domain=domain_name,
+#            UserPoolId=os.environ['USER_POOL_ID']
+#        )
+#        print('Created Cognito domain')
+#        return domain_name
+#    except Exception as e:
+#        print('Exception creating Cognito domain.\nMessage: {}'.format(e.message))
+#        return None
 
 def create_cognito_user():
     print('Creating Cognito user')
@@ -145,22 +145,6 @@ def create_cognito_user():
         print('Created user.')
     except Exception as e:
         print('Exception creating Cognito user.\nMessage: {}'.format(e.message))
-
-def turn_on_cognito_for_os():
-    print('Turn on cognito for opensearch')
-    try:
-        client = boto3.client('opensearch')
-        response = client.update_domain_config(
-            DomainName=os.environ['AES_ENDPOINT'],
-            CognitoOptions={
-                'Enabled': True,
-                'UserPoolId': os.environ['USER_POOL_ID'],
-                'IdentityPoolId': os.environ['CognitoIdentityPool'],
-                'RoleArn': 'CognitoAccessForAmazonOpenSearch'
-            }
-        )
-    except Exception as e:
-        print("Exception enabling cognito authentication.\nMessage: {}".format(e))
 
 def delete_cognito_domain():
     try:

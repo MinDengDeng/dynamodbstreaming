@@ -357,3 +357,14 @@ Resources:
           - Constants
           - S3Keys
           - DDBUpdateLambdaFunctionCode
+
+
+
+
+
+          Fn::Join:
+          - ''
+          - - 'imdb-ddb-os-lab-'
+            - Ref: AWS::Region
+            - "-"
+            - Ref: AWS::Account
